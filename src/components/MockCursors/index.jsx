@@ -56,14 +56,14 @@ export default function MockCursors() {
   // 👇 ONLY UI STATE (no logic change)
   const [cursors, setCursors] = useState([
     {
-      name: "Aryan",
+      name: "Suzzie",
       color: "#f97316",
       x: 0,
       y: 0,
       active: false,
     },
     {
-      name: "Priya",
+      name: "Ananya",
       color: "#8b5cf6",
       x: 0,
       y: 0,
@@ -101,7 +101,6 @@ export default function MockCursors() {
 
       await sleep(800);
 
-      // ───── 1. Aryan draws rectangle ─────
       const rX1 = W * 0.5;
       const rY1 = H * 0.28;
       const rX2 = W * 0.68;
@@ -119,14 +118,14 @@ export default function MockCursors() {
 
       emitActivity({
         id: Date.now(),
-        user: { name: "Aryan", avatar: "A", color: "#f97316" },
+        user: { name: "Suzzie", avatar: "S", color: "#f97316" },
         action: "drew a rectangle",
         ts: Date.now(),
       });
 
       await sleep(700);
 
-      // ───── 2. Priya draws brush stroke ─────
+      
       const pts = [
         { x: W * 0.25, y: H * 0.6 },
         { x: W * 0.35, y: H * 0.55 },
@@ -157,7 +156,7 @@ export default function MockCursors() {
 
       emitActivity({
         id: Date.now(),
-        user: { name: "Priya", avatar: "P", color: "#8b5cf6" },
+        user: { name: "Ananya", avatar: "A", color: "#8b5cf6" },
         action: "sketched a path",
         ts: Date.now(),
       });

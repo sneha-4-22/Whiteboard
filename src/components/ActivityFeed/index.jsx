@@ -2,9 +2,9 @@ import React, { useEffect, useRef, useState } from "react";
 import classes from "./index.module.css";
 
 const MOCK_USERS = [
-  { id: 1, name: "Aryan", color: "#f97316", avatar: "A" },
-  { id: 2, name: "Priya", color: "#8b5cf6", avatar: "P" },
-  { id: 3, name: "Rahul", color: "#06b6d4", avatar: "R" },
+  { id: 1, name: "Suzzie", color: "#f97316", avatar: "S" },
+  { id: 2, name: "Ananya", color: "#8b5cf6", avatar: "A" },
+  { id: 3, name: "Manit", color: "#06b6d4", avatar: "M" },
 ];
 
 function timeAgo(ts) {

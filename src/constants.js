@@ -90,7 +90,7 @@ export const ARROW_LENGTH = 20;
 export const ELEMENT_ERASE_THRESHOLD = 10;
 
 export const MOCK_USERS = [
-  { id: 1, name: "Aryan", color: "#f97316", avatar: "A" },
-  { id: 2, name: "Priya", color: "#8b5cf6", avatar: "P" },
-  { id: 3, name: "Rahul", color: "#06b6d4", avatar: "R" },
+  { id: 1, name: "Suzzie", color: "#f97316", avatar: "S" },
+  { id: 2, name: "Ananaya", color: "#8b5cf6", avatar: "A" },
+  { id: 3, name: "Manit", color: "#06b6d4", avatar: "M" },
 ];
