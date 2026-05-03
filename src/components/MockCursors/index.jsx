@@ -188,7 +188,7 @@ export default function MockCursors() {
             transform: `translate(${c.x}px, ${c.y}px)`,
           }}
         >
-          {/* cursor dot */}
+          
           <div
             style={{
               width: 10,
@@ -200,7 +200,7 @@ export default function MockCursors() {
             }}
           />
 
-          {/* name chip */}
+         
           <div
             className={classes.chip}
             style={{ background: c.color }}
