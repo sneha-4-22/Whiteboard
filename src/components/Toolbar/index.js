@@ -3,13 +3,14 @@ import classes from "./index.module.css";
 import cx from "classnames";
 import {
   FaSlash, FaRegCircle, FaArrowRight, FaPaintBrush,
-  FaEraser, FaUndoAlt, FaRedoAlt, FaFont, FaDownload,
+  FaEraser, FaUndoAlt, FaRedoAlt, FaFont,
   FaMousePointer, FaStickyNote, FaSearchPlus, FaSearchMinus,
-  FaExpand,
+  FaExpand, FaImage, FaFilePdf,
 } from "react-icons/fa";
 import { LuRectangleHorizontal } from "react-icons/lu";
 import { TOOL_ITEMS, MOCK_USERS } from "../../constants";
 import boardContext from "../../store/board-context";
+import { exportAsPng, exportAsPdf } from "../../utils/exportBoard";
 
 const Toolbar = () => {
   const {
@@ -21,30 +22,23 @@ const Toolbar = () => {
     resetView,
   } = useContext(boardContext);
 
-  const handleDownloadClick = () => {
-    const canvas = document.getElementById("canvas");
-    const data = canvas.toDataURL("image/png");
-    const anchor = document.createElement("a");
-    anchor.href = data;
-    anchor.download = "whiteboard.png";
-    anchor.click();
-  };
+  const [exportOpen, setExportOpen] = useState(false);
 
   const tools = [
-    { id: TOOL_ITEMS.SELECT, icon: <FaMousePointer />, label: "Select & Move (V)" },
-    { id: TOOL_ITEMS.BRUSH, icon: <FaPaintBrush />, label: "Brush (B)" },
-    { id: TOOL_ITEMS.LINE, icon: <FaSlash />, label: "Line (L)" },
-    { id: TOOL_ITEMS.RECTANGLE, icon: <LuRectangleHorizontal />, label: "Rectangle (R)" },
-    { id: TOOL_ITEMS.CIRCLE, icon: <FaRegCircle />, label: "Circle (C)" },
-    { id: TOOL_ITEMS.ARROW, icon: <FaArrowRight />, label: "Arrow (A)" },
-    { id: TOOL_ITEMS.TEXT, icon: <FaFont />, label: "Text (T)" },
-    { id: TOOL_ITEMS.ERASER, icon: <FaEraser />, label: "Eraser (E)" },
-    { id: TOOL_ITEMS.STICKY, icon: <FaStickyNote />, label: "Sticky Note (S)" },
+    { id: TOOL_ITEMS.SELECT,    icon: <FaMousePointer />,         label: "Select & Move (V)" },
+    { id: TOOL_ITEMS.BRUSH,     icon: <FaPaintBrush />,           label: "Brush (B)" },
+    { id: TOOL_ITEMS.LINE,      icon: <FaSlash />,                label: "Line (L)" },
+    { id: TOOL_ITEMS.RECTANGLE, icon: <LuRectangleHorizontal />,  label: "Rectangle (R)" },
+    { id: TOOL_ITEMS.CIRCLE,    icon: <FaRegCircle />,            label: "Circle (C)" },
+    { id: TOOL_ITEMS.ARROW,     icon: <FaArrowRight />,           label: "Arrow (A)" },
+    { id: TOOL_ITEMS.TEXT,      icon: <FaFont />,                 label: "Text (T)" },
+    { id: TOOL_ITEMS.ERASER,    icon: <FaEraser />,               label: "Eraser (E)" },
+    { id: TOOL_ITEMS.STICKY,    icon: <FaStickyNote />,           label: "Sticky Note (S)" },
   ];
 
   return (
     <>
-      {/* Main toolbar */}
+      {/* ── Main toolbar ─────────────────────────────── */}
       <div className={classes.container}>
         {/* Brand */}
         <div className={classes.brand}>
@@ -59,9 +53,7 @@ const Toolbar = () => {
           {tools.map((tool) => (
             <button
               key={tool.id}
-              className={cx(classes.toolItem, {
-                [classes.active]: activeToolItem === tool.id,
-              })}
+              className={cx(classes.toolItem, { [classes.active]: activeToolItem === tool.id })}
               onClick={() => changeToolHandler(tool.id)}
               title={tool.label}
             >
@@ -84,11 +76,37 @@ const Toolbar = () => {
 
         <div className={classes.divider} />
 
-        {/* Export */}
-        <button className={cx(classes.toolItem, classes.exportBtn)} onClick={handleDownloadClick} title="Download as PNG">
-          <FaDownload />
-          <span className={classes.exportLabel}>Export</span>
-        </button>
+        {/* Export dropdown */}
+        <div className={classes.exportWrapper}>
+          <button
+            className={cx(classes.toolItem, classes.exportBtn)}
+            onClick={() => setExportOpen((v) => !v)}
+            title="Export board"
+          >
+            <FaImage />
+            <span className={classes.exportLabel}>Export</span>
+            <span className={classes.exportCaret}>▾</span>
+          </button>
+
+          {exportOpen && (
+            <div className={classes.exportDropdown} onMouseLeave={() => setExportOpen(false)}>
+              <button
+                className={classes.exportOption}
+                onClick={() => { exportAsPng("canvas"); setExportOpen(false); }}
+              >
+                <FaImage className={classes.exportOptionIcon} />
+                <span>Download PNG</span>
+              </button>
+              <button
+                className={classes.exportOption}
+                onClick={() => { exportAsPdf("canvas"); setExportOpen(false); }}
+              >
+                <FaFilePdf className={classes.exportOptionIcon} />
+                <span>Download PDF</span>
+              </button>
+            </div>
+          )}
+        </div>
 
         <div className={classes.divider} />
 
@@ -108,7 +126,7 @@ const Toolbar = () => {
         </div>
       </div>
 
-      {/* Zoom controls (bottom-right) */}
+      {/* ── Zoom controls ─────────────────────────────── */}
       <div className={classes.zoomControls}>
         <button
           className={classes.zoomBtn}
@@ -126,12 +144,12 @@ const Toolbar = () => {
           <FaSearchPlus />
         </button>
         <div className={classes.zoomDivider} />
-        <button className={classes.zoomBtn} onClick={resetView} title="Reset view">
+        <button className={classes.zoomBtn} onClick={resetView} title="Reset view (0)">
           <FaExpand />
         </button>
       </div>
 
-      {/* Active tool indicator */}
+      {/* ── Tool hints ────────────────────────────────── */}
       {activeToolItem === TOOL_ITEMS.STICKY && (
         <div className={classes.toolHint}>
           🗒️ Click anywhere on the canvas to place a sticky note

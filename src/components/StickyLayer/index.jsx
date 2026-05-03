@@ -3,7 +3,6 @@ import boardContext from "../../store/board-context";
 import { TOOL_ITEMS, STICKY_COLORS } from "../../constants";
 import classes from "./index.module.css";
 
-// Individual sticky note
 function StickyNote({ sticky, onUpdate, onDelete, zoom, panOffset }) {
   const [dragging, setDragging] = useState(false);
   const [editing, setEditing] = useState(false);

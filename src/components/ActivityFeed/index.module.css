@@ -1,0 +1,239 @@
+.root {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+/* Toggle button */
+.toggleBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px 7px 10px;
+  background: #1e293b;
+  color: white;
+  border: none;
+  border-radius: 22px;
+  cursor: pointer;
+  font-family: "Poppins", sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.2);
+  transition: background 0.15s, transform 0.1s;
+  position: relative;
+}
+
+.toggleBtn:hover {
+  background: #0f172a;
+  transform: translateY(-1px);
+}
+
+.toggleIcon {
+  font-size: 14px;
+}
+
+.toggleLabel {
+  letter-spacing: 0.2px;
+}
+
+.badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #ef4444;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: "Poppins", sans-serif;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  animation: popIn 0.2s ease;
+}
+
+@keyframes popIn {
+  from { transform: scale(0); }
+  to   { transform: scale(1); }
+}
+
+/* Panel */
+.panel {
+  width: 260px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.06);
+  overflow: hidden;
+  animation: slideUp 0.2s ease;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.panelTitle {
+  font-family: "Poppins", sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+  flex: 1;
+}
+
+.liveDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
+  50%       { box-shadow: 0 0 0 5px rgba(34,197,94,0); }
+}
+
+.liveLabel {
+  font-family: "Poppins", sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  color: #22c55e;
+  letter-spacing: 0.8px;
+}
+
+/* Online strip */
+.onlineStrip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: #f8fafc;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.onlineLabel {
+  font-family: "Poppins", sans-serif;
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 500;
+  flex: 1;
+}
+
+.onlineAvatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Poppins", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+  position: relative;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}
+
+.onlinePulse {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid;
+  opacity: 0.4;
+  animation: ringPulse 2s infinite;
+}
+
+@keyframes ringPulse {
+  0%   { transform: scale(1); opacity: 0.4; }
+  70%  { transform: scale(1.35); opacity: 0; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+/* Event list */
+.eventList {
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 6px 0;
+}
+
+.eventList::-webkit-scrollbar { width: 4px; }
+.eventList::-webkit-scrollbar-track { background: transparent; }
+.eventList::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
+
+.eventItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  transition: background 0.1s;
+}
+
+.eventItem:hover {
+  background: #f8fafc;
+}
+
+.eventNew {
+  animation: flashNew 0.5s ease;
+}
+
+@keyframes flashNew {
+  from { background: #eff6ff; }
+  to   { background: transparent; }
+}
+
+.eventAvatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Poppins", sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+}
+
+.eventBody {
+  flex: 1;
+  font-family: "Poppins", sans-serif;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #475569;
+}
+
+.eventName {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.eventAction {
+  font-weight: 400;
+}
+
+.eventTime {
+  font-family: "Poppins", sans-serif;
+  font-size: 10px;
+  color: #94a3b8;
+  white-space: nowrap;
+  flex-shrink: 0;
+}

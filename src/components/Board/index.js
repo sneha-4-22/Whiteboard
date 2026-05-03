@@ -7,8 +7,9 @@ import { getElementBounds } from "../../utils/math";
 import classes from "./index.module.css";
 
 function Board() {
-  const canvasRef = useRef();
+  const canvasRef  = useRef();
   const textAreaRef = useRef();
+
   const {
     elements,
     toolActionType,
@@ -23,13 +24,13 @@ function Board() {
     undo,
     redo,
   } = useContext(boardContext);
-  const { toolboxState } = useContext(toolboxContext);
 
+  const { toolboxState } = useContext(toolboxContext);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const resize = () => {
-      canvas.width = window.innerWidth;
+      canvas.width  = window.innerWidth;
       canvas.height = window.innerHeight;
     };
     resize();
@@ -37,48 +38,61 @@ function Board() {
     return () => window.removeEventListener("resize", resize);
   }, []);
 
-  // Keyboard shortcuts
   useEffect(() => {
-    function handleKeyDown(event) {
-      if (event.ctrlKey && event.key === "z") undo();
-      else if (event.ctrlKey && event.key === "y") redo();
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    const handler = (e) => {
+      if (e.ctrlKey && e.key === "z") undo();
+      else if (e.ctrlKey && e.key === "y") redo();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
   }, [undo, redo]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const handleWheel = (e) => {
       e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.08 : 0.08;
-      zoomBoard(delta, e.clientX, e.clientY);
+      zoomBoard(e.deltaY > 0 ? -0.08 : 0.08, e.clientX, e.clientY);
     };
     canvas.addEventListener("wheel", handleWheel, { passive: false });
     return () => canvas.removeEventListener("wheel", handleWheel);
   }, [zoomBoard]);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const onDown = (e) => boardMouseDownHandler(e, toolboxState);
+    const onMove = (e) => boardMouseMoveHandler(e);
+    const onUp   = (e) => boardMouseUpHandler(e);
+
+    canvas.addEventListener("mousedown", onDown);
+    canvas.addEventListener("mousemove", onMove);
+    canvas.addEventListener("mouseup",   onUp);
+
+    return () => {
+      canvas.removeEventListener("mousedown", onDown);
+      canvas.removeEventListener("mousemove", onMove);
+      canvas.removeEventListener("mouseup",   onUp);
+    };
+  }, [boardMouseDownHandler, boardMouseMoveHandler, boardMouseUpHandler, toolboxState]);
+
+  useLayoutEffect(() => {
+    const canvas  = canvasRef.current;
     const context = canvas.getContext("2d");
+
     context.clearRect(0, 0, canvas.width, canvas.height);
+
     context.save();
     context.strokeStyle = "#e5e7eb";
-    context.lineWidth = 0.5;
+    context.lineWidth   = 0.5;
     const gridSize = 30 * zoom;
-    const offsetX = panOffset.x % gridSize;
-    const offsetY = panOffset.y % gridSize;
+    const offsetX  = panOffset.x % gridSize;
+    const offsetY  = panOffset.y % gridSize;
     for (let x = offsetX; x < canvas.width; x += gridSize) {
-      context.beginPath();
-      context.moveTo(x, 0);
-      context.lineTo(x, canvas.height);
-      context.stroke();
+      context.beginPath(); context.moveTo(x, 0); context.lineTo(x, canvas.height); context.stroke();
     }
     for (let y = offsetY; y < canvas.height; y += gridSize) {
-      context.beginPath();
-      context.moveTo(0, y);
-      context.lineTo(canvas.width, y);
-      context.stroke();
+      context.beginPath(); context.moveTo(0, y); context.lineTo(canvas.width, y); context.stroke();
     }
     context.restore();
     context.save();
@@ -102,8 +116,8 @@ function Board() {
           break;
         case TOOL_ITEMS.TEXT:
           context.textBaseline = "top";
-          context.font = `${element.size}px Caveat`;
-          context.fillStyle = element.stroke;
+          context.font         = `${element.size}px Caveat`;
+          context.fillStyle    = element.stroke;
           context.fillText(element.text, element.x1, element.y1);
           break;
         default:
@@ -115,13 +129,16 @@ function Board() {
         if (bounds) {
           context.save();
           context.strokeStyle = "#6366f1";
-          context.lineWidth = 2 / zoom;
+          context.lineWidth   = 2 / zoom;
           context.setLineDash([6 / zoom, 3 / zoom]);
           context.strokeRect(bounds.x - 4, bounds.y - 4, bounds.width + 8, bounds.height + 8);
           context.fillStyle = "#6366f1";
           const hs = 6 / zoom;
-          [[bounds.x - 4, bounds.y - 4], [bounds.x + bounds.width + 4, bounds.y - 4],
-           [bounds.x - 4, bounds.y + bounds.height + 4], [bounds.x + bounds.width + 4, bounds.y + bounds.height + 4]
+          [
+            [bounds.x - 4,               bounds.y - 4              ],
+            [bounds.x + bounds.width + 4, bounds.y - 4              ],
+            [bounds.x - 4,               bounds.y + bounds.height + 4],
+            [bounds.x + bounds.width + 4, bounds.y + bounds.height + 4],
           ].forEach(([hx, hy]) => {
             context.fillRect(hx - hs / 2, hy - hs / 2, hs, hs);
           });
@@ -134,17 +151,10 @@ function Board() {
   }, [elements, selectedElementId, zoom, panOffset]);
 
   useEffect(() => {
-    const textarea = textAreaRef.current;
     if (toolActionType === TOOL_ACTION_TYPES.WRITING) {
-      setTimeout(() => textarea.focus(), 0);
+      setTimeout(() => textAreaRef.current?.focus(), 0);
     }
   }, [toolActionType]);
-
-  const getCursor = () => {
-    if (toolActionType === TOOL_ACTION_TYPES.PANNING) return "grabbing";
-    const { activeToolItem } = require("../../store/board-context");
-    return "default";
-  };
 
   return (
     <>
@@ -153,29 +163,25 @@ function Board() {
           ref={textAreaRef}
           className={classes.textElementBox}
           style={{
-            top: elements[elements.length - 1].y1 * zoom + panOffset.y,
-            left: elements[elements.length - 1].x1 * zoom + panOffset.x,
+            top:      elements[elements.length - 1].y1 * zoom + panOffset.y,
+            left:     elements[elements.length - 1].x1 * zoom + panOffset.x,
             fontSize: `${elements[elements.length - 1]?.size * zoom}px`,
-            color: elements[elements.length - 1]?.stroke,
+            color:    elements[elements.length - 1]?.stroke,
           }}
-          onBlur={(event) => textAreaBlurHandler(event.target.value)}
+          onBlur={(e) => textAreaBlurHandler(e.target.value)}
         />
       )}
+
       <canvas
         ref={canvasRef}
         id="canvas"
         className={classes.canvas}
         style={{
           cursor:
-            toolActionType === TOOL_ACTION_TYPES.PANNING
-              ? "grabbing"
-              : toolActionType === TOOL_ACTION_TYPES.MOVING
-              ? "move"
-              : "crosshair",
+            toolActionType === TOOL_ACTION_TYPES.PANNING  ? "grabbing"  :
+            toolActionType === TOOL_ACTION_TYPES.MOVING   ? "move"      :
+            "crosshair",
         }}
-        onMouseDown={(e) => boardMouseDownHandler(e, toolboxState)}
-        onMouseMove={boardMouseMoveHandler}
-        onMouseUp={boardMouseUpHandler}
       />
     </>
   );
