@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useRef } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import boardContext from "../../store/board-context";
 import { TOOL_ITEMS } from "../../constants";
 import classes from "./index.module.css";
@@ -53,6 +53,32 @@ export default function MockCursors() {
   const alive = useRef(true);
   const done = useRef(false);
 
+  // 👇 ONLY UI STATE (no logic change)
+  const [cursors, setCursors] = useState([
+    {
+      name: "Aryan",
+      color: "#f97316",
+      x: 0,
+      y: 0,
+      active: false,
+    },
+    {
+      name: "Priya",
+      color: "#8b5cf6",
+      x: 0,
+      y: 0,
+      active: false,
+    },
+  ]);
+
+  const moveCursor = (index, x, y, active = true) => {
+    setCursors((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], x, y, active };
+      return copy;
+    });
+  };
+
   useEffect(() => {
     if (done.current) return;
     done.current = true;
@@ -83,9 +109,13 @@ export default function MockCursors() {
 
       changeToolHandler(TOOL_ITEMS.RECTANGLE);
 
+      moveCursor(0, rX1, rY1, true);
+
       fire(canvas, "mousedown", rX1, rY1);
-      await animateDraw(canvas, () => {}, rX1, rY1, rX2, rY2, 900);
+      await animateDraw(canvas, () => moveCursor(0, rX2, rY2, true), rX1, rY1, rX2, rY2, 900);
       fire(canvas, "mouseup", rX2, rY2);
+
+      moveCursor(0, rX2, rY2, false);
 
       emitActivity({
         id: Date.now(),
@@ -105,12 +135,14 @@ export default function MockCursors() {
 
       changeToolHandler(TOOL_ITEMS.BRUSH);
 
+      moveCursor(1, pts[0].x, pts[0].y, true);
+
       fire(canvas, "mousedown", pts[0].x, pts[0].y);
 
       for (let i = 0; i < pts.length - 1; i++) {
         await animateDraw(
           canvas,
-          () => {},
+          (x, y) => moveCursor(1, x, y, true),
           pts[i].x,
           pts[i].y,
           pts[i + 1].x,
@@ -120,6 +152,8 @@ export default function MockCursors() {
       }
 
       fire(canvas, "mouseup", pts.at(-1).x, pts.at(-1).y);
+
+      moveCursor(1, pts.at(-1).x, pts.at(-1).y, false);
 
       emitActivity({
         id: Date.now(),
@@ -136,5 +170,45 @@ export default function MockCursors() {
     };
   }, [changeToolHandler]);
 
-  return <div className={classes.layer} aria-hidden="true" />;
+  return (
+    <div className={classes.layer} aria-hidden="true">
+      <style>{`
+        @keyframes pulse {
+          0% { transform: scale(1); opacity: 0.7; }
+          50% { transform: scale(1.15); opacity: 1; }
+          100% { transform: scale(1); opacity: 0.7; }
+        }
+      `}</style>
+
+      {cursors.map((c, i) => (
+        <div
+          key={c.name}
+          className={classes.cursor}
+          style={{
+            transform: `translate(${c.x}px, ${c.y}px)`,
+          }}
+        >
+          {/* cursor dot */}
+          <div
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: "50%",
+              background: c.color,
+              boxShadow: `0 0 12px ${c.color}`,
+              animation: c.active ? "pulse 0.8s infinite" : "none",
+            }}
+          />
+
+          {/* name chip */}
+          <div
+            className={classes.chip}
+            style={{ background: c.color }}
+          >
+            {c.name} {c.active ? "✍️" : ""}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
