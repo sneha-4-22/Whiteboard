@@ -7,6 +7,8 @@ import {
   isPointNearElement,
   getElementAtPosition,
   moveElement,
+  getHandleAtPoint,
+  resizeElement,
 } from "../utils/element";
 import getStroke from "perfect-freehand";
 
@@ -65,7 +67,6 @@ const boardReducer = (state, action) => {
           return { ...state, elements: newElements };
         }
         case TOOL_ITEMS.BRUSH: {
-          // ── FIX: pass size into getStroke on every move update ──
           const brushSize = newElements[index].size
             ? Number(newElements[index].size)
             : 4;
@@ -171,6 +172,45 @@ const boardReducer = (state, action) => {
       };
     }
 
+    // ── RESIZE ────────────────────────────────────────────────────────────────
+    case BOARD_ACTIONS.START_RESIZE: {
+      return {
+        ...state,
+        toolActionType: TOOL_ACTION_TYPES.RESIZING,
+        resizeHandle: action.payload.handle,
+      };
+    }
+
+    case BOARD_ACTIONS.RESIZE_ELEMENT: {
+      const { clientX, clientY } = action.payload;
+      if (state.selectedElementId === null || !state.resizeHandle) return state;
+
+      const elementIndex = state.elements.findIndex(
+        (el) => el.id === state.selectedElementId
+      );
+      if (elementIndex === -1) return state;
+
+      const element = state.elements[elementIndex];
+      const resized = resizeElement(element, state.resizeHandle, clientX, clientY);
+
+      const newElements = [...state.elements];
+      newElements[elementIndex] = resized;
+
+      return { ...state, elements: newElements };
+    }
+
+    case BOARD_ACTIONS.RESIZE_UP: {
+      const newHistory = state.history.slice(0, state.index + 1);
+      newHistory.push([...state.elements]);
+      return {
+        ...state,
+        history: newHistory,
+        index: state.index + 1,
+        toolActionType: TOOL_ACTION_TYPES.SELECTING,
+        resizeHandle: null,
+      };
+    }
+
     // ── DELETE SELECTED ELEMENT ───────────────────────────────────────────────
     case BOARD_ACTIONS.DELETE_ELEMENT: {
       const newElements = state.elements.filter(
@@ -190,9 +230,7 @@ const boardReducer = (state, action) => {
 
     // ── LAYERING ──────────────────────────────────────────────────────────────
     case BOARD_ACTIONS.BRING_TO_FRONT: {
-      const idx = state.elements.findIndex(
-        (el) => el.id === action.payload.id
-      );
+      const idx = state.elements.findIndex((el) => el.id === action.payload.id);
       if (idx === -1 || idx === state.elements.length - 1) return state;
       const els = [...state.elements];
       els.push(els.splice(idx, 1)[0]);
@@ -202,9 +240,7 @@ const boardReducer = (state, action) => {
     }
 
     case BOARD_ACTIONS.SEND_TO_BACK: {
-      const idx = state.elements.findIndex(
-        (el) => el.id === action.payload.id
-      );
+      const idx = state.elements.findIndex((el) => el.id === action.payload.id);
       if (idx <= 0) return state;
       const els = [...state.elements];
       els.unshift(els.splice(idx, 1)[0]);
@@ -214,9 +250,7 @@ const boardReducer = (state, action) => {
     }
 
     case BOARD_ACTIONS.BRING_FORWARD: {
-      const idx = state.elements.findIndex(
-        (el) => el.id === action.payload.id
-      );
+      const idx = state.elements.findIndex((el) => el.id === action.payload.id);
       if (idx === -1 || idx === state.elements.length - 1) return state;
       const els = [...state.elements];
       [els[idx], els[idx + 1]] = [els[idx + 1], els[idx]];
@@ -226,9 +260,7 @@ const boardReducer = (state, action) => {
     }
 
     case BOARD_ACTIONS.SEND_BACKWARD: {
-      const idx = state.elements.findIndex(
-        (el) => el.id === action.payload.id
-      );
+      const idx = state.elements.findIndex((el) => el.id === action.payload.id);
       if (idx <= 0) return state;
       const els = [...state.elements];
       [els[idx], els[idx - 1]] = [els[idx - 1], els[idx]];
@@ -243,8 +275,7 @@ const boardReducer = (state, action) => {
       const newSticky = {
         id: `sticky-${Date.now()}`,
         type: "STICKY",
-        x,
-        y,
+        x, y,
         width: 200,
         height: 160,
         color,
@@ -337,6 +368,7 @@ const initialBoardState = {
   index: 0,
   selectedElementId: null,
   moveStart: null,
+  resizeHandle: null, // ← NEW
   stickies: [],
   zoom: 1,
   panOffset: { x: 0, y: 0 },
@@ -381,6 +413,24 @@ const BoardProvider = ({ children }) => {
     }
 
     if (boardState.activeToolItem === TOOL_ITEMS.SELECT) {
+      // ── Check resize handles on currently selected element first ──
+      if (boardState.selectedElementId !== null) {
+        const selectedEl = boardState.elements.find(
+          (el) => el.id === boardState.selectedElementId
+        );
+        if (selectedEl) {
+          const handle = getHandleAtPoint(selectedEl, x, y, boardState.zoom);
+          if (handle) {
+            dispatchBoardAction({
+              type: BOARD_ACTIONS.START_RESIZE,
+              payload: { handle },
+            });
+            return;
+          }
+        }
+      }
+
+      // ── Otherwise select / deselect ──
       const found = getElementAtPosition(boardState.elements, x, y);
       dispatchBoardAction({
         type: BOARD_ACTIONS.SELECT_ELEMENT,
@@ -419,11 +469,23 @@ const BoardProvider = ({ children }) => {
       return;
     }
 
+    // ── FIX: only resize when mouse button is held ──
+    if (boardState.toolActionType === TOOL_ACTION_TYPES.RESIZING) {
+      if (event.buttons === 1) {
+        dispatchBoardAction({
+          type: BOARD_ACTIONS.RESIZE_ELEMENT,
+          payload: { clientX: x, clientY: y },
+        });
+      }
+      return;
+    }
+
+    // ── FIX: only move when mouse button is held ──
     if (
       boardState.toolActionType === TOOL_ACTION_TYPES.SELECTING ||
       boardState.toolActionType === TOOL_ACTION_TYPES.MOVING
     ) {
-      if (boardState.selectedElementId !== null) {
+      if (boardState.selectedElementId !== null && event.buttons === 1) {
         dispatchBoardAction({
           type: BOARD_ACTIONS.MOVE_ELEMENT,
           payload: { clientX: x, clientY: y },
@@ -450,6 +512,11 @@ const BoardProvider = ({ children }) => {
 
     if (boardState.toolActionType === TOOL_ACTION_TYPES.PANNING) {
       dispatchBoardAction({ type: BOARD_ACTIONS.PAN_END });
+      return;
+    }
+
+    if (boardState.toolActionType === TOOL_ACTION_TYPES.RESIZING) {
+      dispatchBoardAction({ type: BOARD_ACTIONS.RESIZE_UP });
       return;
     }
 
@@ -499,10 +566,7 @@ const BoardProvider = ({ children }) => {
   };
 
   const zoomHandler = (delta, centerX, centerY) => {
-    const newZoom = Math.min(
-      Math.max(boardState.zoom + delta, 0.2),
-      5
-    );
+    const newZoom = Math.min(Math.max(boardState.zoom + delta, 0.2), 5);
     const scale = newZoom / boardState.zoom;
     const newPanX = centerX - scale * (centerX - boardState.panOffset.x);
     const newPanY = centerY - scale * (centerY - boardState.panOffset.y);
@@ -518,10 +582,7 @@ const BoardProvider = ({ children }) => {
 
   const resetViewHandler = () => {
     dispatchBoardAction({ type: BOARD_ACTIONS.SET_ZOOM, payload: { zoom: 1 } });
-    dispatchBoardAction({
-      type: BOARD_ACTIONS.SET_PAN,
-      payload: { x: 0, y: 0 },
-    });
+    dispatchBoardAction({ type: BOARD_ACTIONS.SET_PAN, payload: { x: 0, y: 0 } });
   };
 
   const boardUndoHandler = useCallback(() => {
@@ -532,40 +593,24 @@ const BoardProvider = ({ children }) => {
     dispatchBoardAction({ type: BOARD_ACTIONS.REDO });
   }, []);
 
-  // ── NEW HANDLERS ─────────────────────────────────────────────────────────
   const deleteElementHandler = useCallback((id) => {
-    dispatchBoardAction({
-      type: BOARD_ACTIONS.DELETE_ELEMENT,
-      payload: { id },
-    });
+    dispatchBoardAction({ type: BOARD_ACTIONS.DELETE_ELEMENT, payload: { id } });
   }, []);
 
   const bringToFrontHandler = useCallback((id) => {
-    dispatchBoardAction({
-      type: BOARD_ACTIONS.BRING_TO_FRONT,
-      payload: { id },
-    });
+    dispatchBoardAction({ type: BOARD_ACTIONS.BRING_TO_FRONT, payload: { id } });
   }, []);
 
   const sendToBackHandler = useCallback((id) => {
-    dispatchBoardAction({
-      type: BOARD_ACTIONS.SEND_TO_BACK,
-      payload: { id },
-    });
+    dispatchBoardAction({ type: BOARD_ACTIONS.SEND_TO_BACK, payload: { id } });
   }, []);
 
   const bringForwardHandler = useCallback((id) => {
-    dispatchBoardAction({
-      type: BOARD_ACTIONS.BRING_FORWARD,
-      payload: { id },
-    });
+    dispatchBoardAction({ type: BOARD_ACTIONS.BRING_FORWARD, payload: { id } });
   }, []);
 
   const sendBackwardHandler = useCallback((id) => {
-    dispatchBoardAction({
-      type: BOARD_ACTIONS.SEND_BACKWARD,
-      payload: { id },
-    });
+    dispatchBoardAction({ type: BOARD_ACTIONS.SEND_BACKWARD, payload: { id } });
   }, []);
 
   const boardContextValue = {
@@ -573,6 +618,7 @@ const BoardProvider = ({ children }) => {
     elements: boardState.elements,
     toolActionType: boardState.toolActionType,
     selectedElementId: boardState.selectedElementId,
+    resizeHandle: boardState.resizeHandle,
     stickies: boardState.stickies,
     zoom: boardState.zoom,
     panOffset: boardState.panOffset,
@@ -589,7 +635,6 @@ const BoardProvider = ({ children }) => {
     undo: boardUndoHandler,
     redo: boardRedoHandler,
     toCanvasCoords,
-    // ── NEW ──
     deleteElement: deleteElementHandler,
     bringToFront: bringToFrontHandler,
     sendToBack: sendToBackHandler,

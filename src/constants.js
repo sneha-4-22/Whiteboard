@@ -18,6 +18,7 @@ export const TOOL_ACTION_TYPES = {
   SELECTING: "SELECTING",
   MOVING: "MOVING",
   PANNING: "PANNING",
+  RESIZING: "RESIZING",
 };
 
 export const BOARD_ACTIONS = {
@@ -41,6 +42,16 @@ export const BOARD_ACTIONS = {
   PAN_START: "PAN_START",
   PAN_MOVE: "PAN_MOVE",
   PAN_END: "PAN_END",
+  // ── these were MISSING — causing layering to silently do nothing ──
+  DELETE_ELEMENT: "DELETE_ELEMENT",
+  BRING_TO_FRONT: "BRING_TO_FRONT",
+  SEND_TO_BACK: "SEND_TO_BACK",
+  BRING_FORWARD: "BRING_FORWARD",
+  SEND_BACKWARD: "SEND_BACKWARD",
+  // ── new resize actions ──
+  START_RESIZE: "START_RESIZE",
+  RESIZE_ELEMENT: "RESIZE_ELEMENT",
+  RESIZE_UP: "RESIZE_UP",
 };
 
 export const COLORS = {
@@ -54,12 +65,12 @@ export const COLORS = {
 };
 
 export const STICKY_COLORS = [
-  "#fef08a", // yellow
-  "#bbf7d0", // green
-  "#bfdbfe", // blue
-  "#fecaca", // red
-  "#e9d5ff", // purple
-  "#fed7aa", // orange
+  "#fef08a",
+  "#bbf7d0",
+  "#bfdbfe",
+  "#fecaca",
+  "#e9d5ff",
+  "#fed7aa",
 ];
 
 export const TOOLBOX_ACTIONS = {
@@ -79,7 +90,7 @@ export const STROKE_TOOL_TYPES = [
 ];
 export const SIZE_TOOL_TYPES = [
   TOOL_ITEMS.LINE,
-  TOOL_ITEMS.BRUSH, 
+  TOOL_ITEMS.BRUSH,
   TOOL_ITEMS.ARROW,
   TOOL_ITEMS.RECTANGLE,
   TOOL_ITEMS.CIRCLE,

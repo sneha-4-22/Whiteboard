@@ -19,7 +19,6 @@ export const createElement = (id, x1, y1, x2, y2, { type, stroke, fill, size }) 
 
   switch (type) {
     case TOOL_ITEMS.BRUSH: {
-      // ── FIX: pass size into getStroke options ──
       return {
         id,
         points: [{ x: x1, y: y1 }],
@@ -74,7 +73,6 @@ export const createElement = (id, x1, y1, x2, y2, { type, stroke, fill, size }) 
   }
 };
 
-// Move an element by dx, dy — returns a new element
 export const moveElement = (element, dx, dy) => {
   const moved = {
     ...element,
@@ -153,6 +151,73 @@ export const moveElement = (element, dx, dy) => {
 
   return moved;
 };
+
+// ── RESIZE ────────────────────────────────────────────────────────────────────
+
+const HANDLE_ORDER = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
+
+/** Returns the 8 handle positions for a given bounding box */
+export const getResizeHandles = (bounds) => {
+  const { x, y, width, height } = bounds;
+  return {
+    nw: { x,               y              },
+    n:  { x: x + width / 2, y              },
+    ne: { x: x + width,    y              },
+    e:  { x: x + width,    y: y + height / 2 },
+    se: { x: x + width,    y: y + height  },
+    s:  { x: x + width / 2, y: y + height  },
+    sw: { x,               y: y + height  },
+    w:  { x,               y: y + height / 2 },
+  };
+};
+
+/** Returns the handle name (e.g. "se") if (px, py) is over a resize handle, else null */
+export const getHandleAtPoint = (element, px, py, zoom = 1) => {
+  // Brush strokes can't be resized
+  if (element.type === TOOL_ITEMS.BRUSH) return null;
+  const bounds = getElementBounds(element);
+  if (!bounds) return null;
+  const handles = getResizeHandles(bounds);
+  const threshold = 8 / zoom;
+  for (const name of HANDLE_ORDER) {
+    const pos = handles[name];
+    if (Math.abs(px - pos.x) <= threshold && Math.abs(py - pos.y) <= threshold) {
+      return name;
+    }
+  }
+  return null;
+};
+
+/** Produces a new element with x1/y1/x2/y2 updated for the given handle drag */
+export const resizeElement = (element, handle, clientX, clientY) => {
+  let { x1, y1, x2, y2 } = element;
+
+  switch (handle) {
+    case "nw": x1 = clientX; y1 = clientY; break;
+    case "n":  y1 = clientY; break;
+    case "ne": x2 = clientX; y1 = clientY; break;
+    case "e":  x2 = clientX; break;
+    case "se": x2 = clientX; y2 = clientY; break;
+    case "s":  y2 = clientY; break;
+    case "sw": x1 = clientX; y2 = clientY; break;
+    case "w":  x1 = clientX; break;
+    default: break;
+  }
+
+  const newEl = createElement(element.id, x1, y1, x2, y2, {
+    type: element.type,
+    stroke: element.stroke,
+    fill: element.fill,
+    size: element.size,
+  });
+
+  // Preserve text content
+  if (element.type === TOOL_ITEMS.TEXT) newEl.text = element.text;
+
+  return newEl;
+};
+
+// ── HIT TESTING ──────────────────────────────────────────────────────────────
 
 export const isPointNearElement = (element, pointX, pointY) => {
   const { x1, y1, x2, y2, type } = element;

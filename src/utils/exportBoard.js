@@ -7,6 +7,9 @@ async function captureFullBoard() {
     "[class*='toolHint']",
     "[class*='root']",
     "[class*='layerControls']",
+    "[class*='layer']", 
+    "[class*='chip']",   
+    "[class*='cursor']",  
   ];
 
   const hidden = [];

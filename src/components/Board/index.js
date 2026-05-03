@@ -1,9 +1,10 @@
-import { useContext, useEffect, useLayoutEffect, useRef } from "react";
+import { useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import rough from "roughjs";
 import boardContext from "../../store/board-context";
 import { TOOL_ACTION_TYPES, TOOL_ITEMS } from "../../constants";
 import toolboxContext from "../../store/toolbox-context";
 import { getElementBounds } from "../../utils/math";
+import { getResizeHandles, getHandleAtPoint } from "../../utils/element";
 import classes from "./index.module.css";
 import {
   FaAngleDoubleUp,
@@ -13,14 +14,28 @@ import {
   FaTrash,
 } from "react-icons/fa";
 
+const HANDLE_CURSORS = {
+  nw: "nw-resize",
+  n:  "n-resize",
+  ne: "ne-resize",
+  e:  "e-resize",
+  se: "se-resize",
+  s:  "s-resize",
+  sw: "sw-resize",
+  w:  "w-resize",
+};
+
 function Board() {
   const canvasRef = useRef();
   const textAreaRef = useRef();
+
+  const [hoveredHandle, setHoveredHandle] = useState(null);
 
   const {
     elements,
     toolActionType,
     selectedElementId,
+    resizeHandle,
     zoom,
     panOffset,
     boardMouseDownHandler,
@@ -30,7 +45,6 @@ function Board() {
     zoomBoard,
     undo,
     redo,
-    // ── NEW ──
     deleteElement,
     bringToFront,
     sendToBack,
@@ -41,7 +55,6 @@ function Board() {
 
   const { toolboxState } = useContext(toolboxContext);
 
-  // ── Resize canvas on window resize ──────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     const resize = () => {
@@ -53,10 +66,8 @@ function Board() {
     return () => window.removeEventListener("resize", resize);
   }, []);
 
-  // ── Keyboard shortcuts ───────────────────────────────────────────────────
   useEffect(() => {
     const handler = (e) => {
-      // Don't fire shortcuts while typing in a text field
       const tag = document.activeElement?.tagName;
       const isTyping = tag === "TEXTAREA" || tag === "INPUT";
 
@@ -64,13 +75,10 @@ function Board() {
       if (e.ctrlKey && e.key === "y") { redo(); return; }
 
       if (!isTyping) {
-        // Delete / Backspace — remove selected element
         if ((e.key === "Delete" || e.key === "Backspace") && selectedElementId !== null) {
           deleteElement(selectedElementId);
           return;
         }
-
-        // Tool shortcuts
         const toolMap = {
           v: TOOL_ITEMS.SELECT,
           b: TOOL_ITEMS.BRUSH,
@@ -87,12 +95,10 @@ function Board() {
         }
       }
     };
-
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [undo, redo, selectedElementId, deleteElement, changeToolHandler]);
 
-  // ── Mouse wheel zoom ─────────────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     const handleWheel = (e) => {
@@ -103,14 +109,13 @@ function Board() {
     return () => canvas.removeEventListener("wheel", handleWheel);
   }, [zoomBoard]);
 
-  // ── Canvas mouse events ──────────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const onDown = (e) => boardMouseDownHandler(e, toolboxState);
     const onMove = (e) => boardMouseMoveHandler(e);
-    const onUp = (e) => boardMouseUpHandler(e);
+    const onUp   = (e) => boardMouseUpHandler(e);
 
     canvas.addEventListener("mousedown", onDown);
     canvas.addEventListener("mousemove", onMove);
@@ -123,14 +128,33 @@ function Board() {
     };
   }, [boardMouseDownHandler, boardMouseMoveHandler, boardMouseUpHandler, toolboxState]);
 
-  // ── Render canvas ────────────────────────────────────────────────────────
+ useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const onHover = (e) => {
+      if (selectedElementId === null) {
+        setHoveredHandle(null);
+        return;
+      }
+      const canvasX = (e.clientX - panOffset.x) / zoom;
+      const canvasY = (e.clientY - panOffset.y) / zoom;
+      const selectedEl = elements.find((el) => el.id === selectedElementId);
+      if (!selectedEl) { setHoveredHandle(null); return; }
+      const handle = getHandleAtPoint(selectedEl, canvasX, canvasY, zoom);
+      setHoveredHandle(handle);
+    };
+
+    canvas.addEventListener("mousemove", onHover);
+    return () => canvas.removeEventListener("mousemove", onHover);
+  }, [selectedElementId, elements, zoom, panOffset]);
+
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
     const context = canvas.getContext("2d");
 
     context.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Grid
     context.save();
     context.strokeStyle = "#e5e7eb";
     context.lineWidth = 0.5;
@@ -138,20 +162,13 @@ function Board() {
     const offsetX = panOffset.x % gridSize;
     const offsetY = panOffset.y % gridSize;
     for (let x = offsetX; x < canvas.width; x += gridSize) {
-      context.beginPath();
-      context.moveTo(x, 0);
-      context.lineTo(x, canvas.height);
-      context.stroke();
+      context.beginPath(); context.moveTo(x, 0); context.lineTo(x, canvas.height); context.stroke();
     }
     for (let y = offsetY; y < canvas.height; y += gridSize) {
-      context.beginPath();
-      context.moveTo(0, y);
-      context.lineTo(canvas.width, y);
-      context.stroke();
+      context.beginPath(); context.moveTo(0, y); context.lineTo(canvas.width, y); context.stroke();
     }
     context.restore();
 
-    // Elements
     context.save();
     context.translate(panOffset.x, panOffset.y);
     context.scale(zoom, zoom);
@@ -182,11 +199,12 @@ function Board() {
       }
       context.restore();
 
-      // Selection highlight
       if (element.id === selectedElementId) {
         const bounds = getElementBounds(element);
         if (bounds) {
           context.save();
+
+          // Dashed selection rectangle
           context.strokeStyle = "#6366f1";
           context.lineWidth = 2 / zoom;
           context.setLineDash([6 / zoom, 3 / zoom]);
@@ -196,16 +214,42 @@ function Board() {
             bounds.width + 8,
             bounds.height + 8
           );
-          context.fillStyle = "#6366f1";
-          const hs = 6 / zoom;
-          [
-            [bounds.x - 4, bounds.y - 4],
-            [bounds.x + bounds.width + 4, bounds.y - 4],
-            [bounds.x - 4, bounds.y + bounds.height + 4],
-            [bounds.x + bounds.width + 4, bounds.y + bounds.height + 4],
-          ].forEach(([hx, hy]) => {
-            context.fillRect(hx - hs / 2, hy - hs / 2, hs, hs);
-          });
+
+          // Resize handles (skip for brush strokes)
+          if (element.type !== TOOL_ITEMS.BRUSH) {
+            const handles = getResizeHandles({
+              x: bounds.x - 4,
+              y: bounds.y - 4,
+              width: bounds.width + 8,
+              height: bounds.height + 8,
+            });
+
+            const hs = 8 / zoom; // handle size
+
+            context.setLineDash([]);
+            Object.entries(handles).forEach(([name, { x: hx, y: hy }]) => {
+              context.fillStyle = "#ffffff";
+              context.strokeStyle = "#6366f1";
+              context.lineWidth = 1.5 / zoom;
+              context.beginPath();
+              context.rect(hx - hs / 2, hy - hs / 2, hs, hs);
+              context.fill();
+              context.stroke();
+            });
+          } else {
+            // Just corner dots for brush (no resize)
+            context.fillStyle = "#6366f1";
+            const hs = 6 / zoom;
+            [
+              [bounds.x - 4, bounds.y - 4],
+              [bounds.x + bounds.width + 4, bounds.y - 4],
+              [bounds.x - 4, bounds.y + bounds.height + 4],
+              [bounds.x + bounds.width + 4, bounds.y + bounds.height + 4],
+            ].forEach(([hx, hy]) => {
+              context.fillRect(hx - hs / 2, hy - hs / 2, hs, hs);
+            });
+          }
+
           context.restore();
         }
       }
@@ -214,61 +258,53 @@ function Board() {
     context.restore();
   }, [elements, selectedElementId, zoom, panOffset]);
 
-  // ── Focus textarea when writing ──────────────────────────────────────────
   useEffect(() => {
     if (toolActionType === TOOL_ACTION_TYPES.WRITING) {
       setTimeout(() => textAreaRef.current?.focus(), 0);
     }
   }, [toolActionType]);
 
+  const getCursor = () => {
+    if (toolActionType === TOOL_ACTION_TYPES.PANNING) return "grabbing";
+    if (toolActionType === TOOL_ACTION_TYPES.MOVING)  return "move";
+    if (toolActionType === TOOL_ACTION_TYPES.RESIZING)
+      return HANDLE_CURSORS[resizeHandle] || "crosshair";
+    if (hoveredHandle) return HANDLE_CURSORS[hoveredHandle];
+    return "crosshair";
+  };
+
   return (
     <>
-      {/* Text input overlay */}
+    
       {toolActionType === TOOL_ACTION_TYPES.WRITING && elements.length > 0 && (
         <textarea
           ref={textAreaRef}
           className={classes.textElementBox}
           style={{
-            top: elements[elements.length - 1].y1 * zoom + panOffset.y,
-            left: elements[elements.length - 1].x1 * zoom + panOffset.x,
+            top:      elements[elements.length - 1].y1 * zoom + panOffset.y,
+            left:     elements[elements.length - 1].x1 * zoom + panOffset.x,
             fontSize: `${elements[elements.length - 1]?.size * zoom}px`,
-            color: elements[elements.length - 1]?.stroke,
+            color:    elements[elements.length - 1]?.stroke,
           }}
           onBlur={(e) => textAreaBlurHandler(e.target.value)}
         />
       )}
 
-      {/* ── Layer controls — appears when an element is selected ── */}
+     
       {selectedElementId !== null && (
         <div className={classes.layerControls}>
           <span className={classes.layerLabel}>Layer</span>
           <div className={classes.layerDivider} />
-          <button
-            className={classes.layerBtn}
-            onClick={() => bringToFront(selectedElementId)}
-            title="Bring to Front"
-          >
+          <button className={classes.layerBtn} onClick={() => bringToFront(selectedElementId)} title="Bring to Front">
             <FaAngleDoubleUp />
           </button>
-          <button
-            className={classes.layerBtn}
-            onClick={() => bringForward(selectedElementId)}
-            title="Bring Forward"
-          >
+          <button className={classes.layerBtn} onClick={() => bringForward(selectedElementId)} title="Bring Forward">
             <FaAngleUp />
           </button>
-          <button
-            className={classes.layerBtn}
-            onClick={() => sendBackward(selectedElementId)}
-            title="Send Backward"
-          >
+          <button className={classes.layerBtn} onClick={() => sendBackward(selectedElementId)} title="Send Backward">
             <FaAngleDown />
           </button>
-          <button
-            className={classes.layerBtn}
-            onClick={() => sendToBack(selectedElementId)}
-            title="Send to Back"
-          >
+          <button className={classes.layerBtn} onClick={() => sendToBack(selectedElementId)} title="Send to Back">
             <FaAngleDoubleDown />
           </button>
           <div className={classes.layerDivider} />
@@ -286,14 +322,7 @@ function Board() {
         ref={canvasRef}
         id="canvas"
         className={classes.canvas}
-        style={{
-          cursor:
-            toolActionType === TOOL_ACTION_TYPES.PANNING
-              ? "grabbing"
-              : toolActionType === TOOL_ACTION_TYPES.MOVING
-              ? "move"
-              : "crosshair",
-        }}
+        style={{ cursor: getCursor() }}
       />
     </>
   );
