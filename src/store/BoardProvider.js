@@ -57,16 +57,34 @@ const boardReducer = (state, action) => {
         case TOOL_ITEMS.ARROW: {
           const { x1, y1, stroke, fill, size } = newElements[index];
           newElements[index] = createElement(index, x1, y1, clientX, clientY, {
-            type: state.activeToolItem, stroke, fill, size,
+            type: state.activeToolItem,
+            stroke,
+            fill,
+            size,
           });
           return { ...state, elements: newElements };
         }
-        case TOOL_ITEMS.BRUSH:
-          newElements[index].points = [...newElements[index].points, { x: clientX, y: clientY }];
+        case TOOL_ITEMS.BRUSH: {
+          // ── FIX: pass size into getStroke on every move update ──
+          const brushSize = newElements[index].size
+            ? Number(newElements[index].size)
+            : 4;
+          newElements[index].points = [
+            ...newElements[index].points,
+            { x: clientX, y: clientY },
+          ];
           newElements[index].path = new Path2D(
-            getSvgPathFromStroke(getStroke(newElements[index].points))
+            getSvgPathFromStroke(
+              getStroke(newElements[index].points, {
+                size: brushSize,
+                thinning: 0.6,
+                smoothing: 0.5,
+                streamline: 0.5,
+              })
+            )
           );
           return { ...state, elements: newElements };
+        }
         default:
           return state;
       }
@@ -81,12 +99,17 @@ const boardReducer = (state, action) => {
 
     case BOARD_ACTIONS.ERASE: {
       const { clientX, clientY } = action.payload;
-      let newElements = state.elements.filter(
+      const newElements = state.elements.filter(
         (element) => !isPointNearElement(element, clientX, clientY)
       );
       const newHistory = state.history.slice(0, state.index + 1);
       newHistory.push(newElements);
-      return { ...state, elements: newElements, history: newHistory, index: state.index + 1 };
+      return {
+        ...state,
+        elements: newElements,
+        history: newHistory,
+        index: state.index + 1,
+      };
     }
 
     case BOARD_ACTIONS.CHANGE_TEXT: {
@@ -148,6 +171,72 @@ const boardReducer = (state, action) => {
       };
     }
 
+    // ── DELETE SELECTED ELEMENT ───────────────────────────────────────────────
+    case BOARD_ACTIONS.DELETE_ELEMENT: {
+      const newElements = state.elements.filter(
+        (el) => el.id !== action.payload.id
+      );
+      const newHistory = state.history.slice(0, state.index + 1);
+      newHistory.push(newElements);
+      return {
+        ...state,
+        elements: newElements,
+        history: newHistory,
+        index: state.index + 1,
+        selectedElementId: null,
+        toolActionType: TOOL_ACTION_TYPES.NONE,
+      };
+    }
+
+    // ── LAYERING ──────────────────────────────────────────────────────────────
+    case BOARD_ACTIONS.BRING_TO_FRONT: {
+      const idx = state.elements.findIndex(
+        (el) => el.id === action.payload.id
+      );
+      if (idx === -1 || idx === state.elements.length - 1) return state;
+      const els = [...state.elements];
+      els.push(els.splice(idx, 1)[0]);
+      const hist = state.history.slice(0, state.index + 1);
+      hist.push(els);
+      return { ...state, elements: els, history: hist, index: state.index + 1 };
+    }
+
+    case BOARD_ACTIONS.SEND_TO_BACK: {
+      const idx = state.elements.findIndex(
+        (el) => el.id === action.payload.id
+      );
+      if (idx <= 0) return state;
+      const els = [...state.elements];
+      els.unshift(els.splice(idx, 1)[0]);
+      const hist = state.history.slice(0, state.index + 1);
+      hist.push(els);
+      return { ...state, elements: els, history: hist, index: state.index + 1 };
+    }
+
+    case BOARD_ACTIONS.BRING_FORWARD: {
+      const idx = state.elements.findIndex(
+        (el) => el.id === action.payload.id
+      );
+      if (idx === -1 || idx === state.elements.length - 1) return state;
+      const els = [...state.elements];
+      [els[idx], els[idx + 1]] = [els[idx + 1], els[idx]];
+      const hist = state.history.slice(0, state.index + 1);
+      hist.push(els);
+      return { ...state, elements: els, history: hist, index: state.index + 1 };
+    }
+
+    case BOARD_ACTIONS.SEND_BACKWARD: {
+      const idx = state.elements.findIndex(
+        (el) => el.id === action.payload.id
+      );
+      if (idx <= 0) return state;
+      const els = [...state.elements];
+      [els[idx], els[idx - 1]] = [els[idx - 1], els[idx]];
+      const hist = state.history.slice(0, state.index + 1);
+      hist.push(els);
+      return { ...state, elements: els, history: hist, index: state.index + 1 };
+    }
+
     // ── STICKY NOTES ──────────────────────────────────────────────────────────
     case BOARD_ACTIONS.ADD_STICKY: {
       const { x, y, color } = action.payload;
@@ -162,8 +251,7 @@ const boardReducer = (state, action) => {
         text: "",
         isEditing: false,
       };
-      const newStickies = [...state.stickies, newSticky];
-      return { ...state, stickies: newStickies };
+      return { ...state, stickies: [...state.stickies, newSticky] };
     }
 
     case BOARD_ACTIONS.UPDATE_STICKY: {
@@ -175,22 +263,22 @@ const boardReducer = (state, action) => {
     }
 
     case BOARD_ACTIONS.DELETE_STICKY: {
-      const newStickies = state.stickies.filter((s) => s.id !== action.payload.id);
+      const newStickies = state.stickies.filter(
+        (s) => s.id !== action.payload.id
+      );
       return { ...state, stickies: newStickies };
     }
 
     // ── ZOOM & PAN ────────────────────────────────────────────────────────────
-    case BOARD_ACTIONS.SET_ZOOM: {
+    case BOARD_ACTIONS.SET_ZOOM:
       return { ...state, zoom: Math.min(Math.max(action.payload.zoom, 0.2), 5) };
-    }
 
-    case BOARD_ACTIONS.PAN_START: {
+    case BOARD_ACTIONS.PAN_START:
       return {
         ...state,
         toolActionType: TOOL_ACTION_TYPES.PANNING,
         panStart: { x: action.payload.x, y: action.payload.y },
       };
-    }
 
     case BOARD_ACTIONS.PAN_MOVE: {
       if (!state.panStart) return state;
@@ -206,17 +294,15 @@ const boardReducer = (state, action) => {
       };
     }
 
-    case BOARD_ACTIONS.PAN_END: {
+    case BOARD_ACTIONS.PAN_END:
       return {
         ...state,
         toolActionType: TOOL_ACTION_TYPES.NONE,
         panStart: null,
       };
-    }
 
-    case BOARD_ACTIONS.SET_PAN: {
+    case BOARD_ACTIONS.SET_PAN:
       return { ...state, panOffset: action.payload };
-    }
 
     // ── UNDO / REDO ───────────────────────────────────────────────────────────
     case BOARD_ACTIONS.UNDO: {
@@ -258,19 +344,19 @@ const initialBoardState = {
 };
 
 const BoardProvider = ({ children }) => {
-  const [boardState, dispatchBoardAction] = useReducer(boardReducer, initialBoardState);
+  const [boardState, dispatchBoardAction] = useReducer(
+    boardReducer,
+    initialBoardState
+  );
 
   const changeToolHandler = (tool) => {
     dispatchBoardAction({ type: BOARD_ACTIONS.CHANGE_TOOL, payload: { tool } });
   };
 
-  // Convert screen coords → canvas coords (accounting for zoom + pan)
-  const toCanvasCoords = (clientX, clientY) => {
-    return {
-      x: (clientX - boardState.panOffset.x) / boardState.zoom,
-      y: (clientY - boardState.panOffset.y) / boardState.zoom,
-    };
-  };
+  const toCanvasCoords = (clientX, clientY) => ({
+    x: (clientX - boardState.panOffset.x) / boardState.zoom,
+    y: (clientY - boardState.panOffset.y) / boardState.zoom,
+  });
 
   const boardMouseDownHandler = (event, toolboxState) => {
     if (boardState.toolActionType === TOOL_ACTION_TYPES.WRITING) return;
@@ -278,9 +364,11 @@ const BoardProvider = ({ children }) => {
     const { clientX, clientY } = event;
     const { x, y } = toCanvasCoords(clientX, clientY);
 
-    // Middle mouse or Space+drag = pan
     if (event.button === 1 || (event.button === 0 && event.altKey)) {
-      dispatchBoardAction({ type: BOARD_ACTIONS.PAN_START, payload: { x: clientX, y: clientY } });
+      dispatchBoardAction({
+        type: BOARD_ACTIONS.PAN_START,
+        payload: { x: clientX, y: clientY },
+      });
       return;
     }
 
@@ -304,10 +392,7 @@ const BoardProvider = ({ children }) => {
       return;
     }
 
-    if (boardState.activeToolItem === TOOL_ITEMS.STICKY) {
-      // Sticky notes are handled via StickyLayer — we dispatch from Toolbar double-click
-      return;
-    }
+    if (boardState.activeToolItem === TOOL_ITEMS.STICKY) return;
 
     dispatchBoardAction({
       type: BOARD_ACTIONS.DRAW_DOWN,
@@ -327,7 +412,10 @@ const BoardProvider = ({ children }) => {
     const { x, y } = toCanvasCoords(clientX, clientY);
 
     if (boardState.toolActionType === TOOL_ACTION_TYPES.PANNING) {
-      dispatchBoardAction({ type: BOARD_ACTIONS.PAN_MOVE, payload: { x: clientX, y: clientY } });
+      dispatchBoardAction({
+        type: BOARD_ACTIONS.PAN_MOVE,
+        payload: { x: clientX, y: clientY },
+      });
       return;
     }
 
@@ -345,9 +433,15 @@ const BoardProvider = ({ children }) => {
     }
 
     if (boardState.toolActionType === TOOL_ACTION_TYPES.DRAWING) {
-      dispatchBoardAction({ type: BOARD_ACTIONS.DRAW_MOVE, payload: { clientX: x, clientY: y } });
+      dispatchBoardAction({
+        type: BOARD_ACTIONS.DRAW_MOVE,
+        payload: { clientX: x, clientY: y },
+      });
     } else if (boardState.toolActionType === TOOL_ACTION_TYPES.ERASING) {
-      dispatchBoardAction({ type: BOARD_ACTIONS.ERASE, payload: { clientX: x, clientY: y } });
+      dispatchBoardAction({
+        type: BOARD_ACTIONS.ERASE,
+        payload: { clientX: x, clientY: y },
+      });
     }
   };
 
@@ -384,30 +478,50 @@ const BoardProvider = ({ children }) => {
   };
 
   const addStickyHandler = (x, y, color) => {
-    dispatchBoardAction({ type: BOARD_ACTIONS.ADD_STICKY, payload: { x, y, color } });
+    dispatchBoardAction({
+      type: BOARD_ACTIONS.ADD_STICKY,
+      payload: { x, y, color },
+    });
   };
 
   const updateStickyHandler = (id, updates) => {
-    dispatchBoardAction({ type: BOARD_ACTIONS.UPDATE_STICKY, payload: { id, updates } });
+    dispatchBoardAction({
+      type: BOARD_ACTIONS.UPDATE_STICKY,
+      payload: { id, updates },
+    });
   };
 
   const deleteStickyHandler = (id) => {
-    dispatchBoardAction({ type: BOARD_ACTIONS.DELETE_STICKY, payload: { id } });
+    dispatchBoardAction({
+      type: BOARD_ACTIONS.DELETE_STICKY,
+      payload: { id },
+    });
   };
 
   const zoomHandler = (delta, centerX, centerY) => {
-    const newZoom = Math.min(Math.max(boardState.zoom + delta, 0.2), 5);
-    // Zoom toward cursor
+    const newZoom = Math.min(
+      Math.max(boardState.zoom + delta, 0.2),
+      5
+    );
     const scale = newZoom / boardState.zoom;
     const newPanX = centerX - scale * (centerX - boardState.panOffset.x);
     const newPanY = centerY - scale * (centerY - boardState.panOffset.y);
-    dispatchBoardAction({ type: BOARD_ACTIONS.SET_ZOOM, payload: { zoom: newZoom } });
-    dispatchBoardAction({ type: BOARD_ACTIONS.SET_PAN, payload: { x: newPanX, y: newPanY } });
+    dispatchBoardAction({
+      type: BOARD_ACTIONS.SET_ZOOM,
+      payload: { zoom: newZoom },
+    });
+    dispatchBoardAction({
+      type: BOARD_ACTIONS.SET_PAN,
+      payload: { x: newPanX, y: newPanY },
+    });
   };
 
   const resetViewHandler = () => {
     dispatchBoardAction({ type: BOARD_ACTIONS.SET_ZOOM, payload: { zoom: 1 } });
-    dispatchBoardAction({ type: BOARD_ACTIONS.SET_PAN, payload: { x: 0, y: 0 } });
+    dispatchBoardAction({
+      type: BOARD_ACTIONS.SET_PAN,
+      payload: { x: 0, y: 0 },
+    });
   };
 
   const boardUndoHandler = useCallback(() => {
@@ -416,6 +530,42 @@ const BoardProvider = ({ children }) => {
 
   const boardRedoHandler = useCallback(() => {
     dispatchBoardAction({ type: BOARD_ACTIONS.REDO });
+  }, []);
+
+  // ── NEW HANDLERS ─────────────────────────────────────────────────────────
+  const deleteElementHandler = useCallback((id) => {
+    dispatchBoardAction({
+      type: BOARD_ACTIONS.DELETE_ELEMENT,
+      payload: { id },
+    });
+  }, []);
+
+  const bringToFrontHandler = useCallback((id) => {
+    dispatchBoardAction({
+      type: BOARD_ACTIONS.BRING_TO_FRONT,
+      payload: { id },
+    });
+  }, []);
+
+  const sendToBackHandler = useCallback((id) => {
+    dispatchBoardAction({
+      type: BOARD_ACTIONS.SEND_TO_BACK,
+      payload: { id },
+    });
+  }, []);
+
+  const bringForwardHandler = useCallback((id) => {
+    dispatchBoardAction({
+      type: BOARD_ACTIONS.BRING_FORWARD,
+      payload: { id },
+    });
+  }, []);
+
+  const sendBackwardHandler = useCallback((id) => {
+    dispatchBoardAction({
+      type: BOARD_ACTIONS.SEND_BACKWARD,
+      payload: { id },
+    });
   }, []);
 
   const boardContextValue = {
@@ -439,6 +589,12 @@ const BoardProvider = ({ children }) => {
     undo: boardUndoHandler,
     redo: boardRedoHandler,
     toCanvasCoords,
+    // ── NEW ──
+    deleteElement: deleteElementHandler,
+    bringToFront: bringToFrontHandler,
+    sendToBack: sendToBackHandler,
+    bringForward: bringForwardHandler,
+    sendBackward: sendBackwardHandler,
   };
 
   return (

@@ -1,7 +1,12 @@
 import { ARROW_LENGTH, TOOL_ITEMS } from "../constants";
 import getStroke from "perfect-freehand";
 import rough from "roughjs/bin/rough";
-import { getArrowHeadsCoordinates, isPointCloseToLine, getElementBounds, isPointInBounds } from "./math";
+import {
+  getArrowHeadsCoordinates,
+  isPointCloseToLine,
+  getElementBounds,
+  isPointInBounds,
+} from "./math";
 
 const gen = rough.generator();
 
@@ -14,12 +19,23 @@ export const createElement = (id, x1, y1, x2, y2, { type, stroke, fill, size }) 
 
   switch (type) {
     case TOOL_ITEMS.BRUSH: {
+      // ── FIX: pass size into getStroke options ──
       return {
         id,
         points: [{ x: x1, y: y1 }],
-        path: new Path2D(getSvgPathFromStroke(getStroke([{ x: x1, y: y1 }]))),
+        path: new Path2D(
+          getSvgPathFromStroke(
+            getStroke([{ x: x1, y: y1 }], {
+              size: size ? Number(size) : 4,
+              thinning: 0.6,
+              smoothing: 0.5,
+              streamline: 0.5,
+            })
+          )
+        ),
         type,
         stroke,
+        size: size ? Number(size) : 4,
       };
     }
     case TOOL_ITEMS.LINE:
@@ -29,14 +45,24 @@ export const createElement = (id, x1, y1, x2, y2, { type, stroke, fill, size }) 
       element.roughEle = gen.rectangle(x1, y1, x2 - x1, y2 - y1, options);
       return element;
     case TOOL_ITEMS.CIRCLE: {
-      const cx = (x1 + x2) / 2, cy = (y1 + y2) / 2;
-      const width = x2 - x1, height = y2 - y1;
+      const cx = (x1 + x2) / 2,
+        cy = (y1 + y2) / 2;
+      const width = x2 - x1,
+        height = y2 - y1;
       element.roughEle = gen.ellipse(cx, cy, width, height, options);
       return element;
     }
     case TOOL_ITEMS.ARROW: {
-      const { x3, y3, x4, y4 } = getArrowHeadsCoordinates(x1, y1, x2, y2, ARROW_LENGTH);
-      const points = [[x1, y1], [x2, y2], [x3, y3], [x2, y2], [x4, y4]];
+      const { x3, y3, x4, y4 } = getArrowHeadsCoordinates(
+        x1, y1, x2, y2, ARROW_LENGTH
+      );
+      const points = [
+        [x1, y1],
+        [x2, y2],
+        [x3, y3],
+        [x2, y2],
+        [x4, y4],
+      ];
       element.roughEle = gen.linearPath(points, options);
       return element;
     }
@@ -58,14 +84,22 @@ export const moveElement = (element, dx, dy) => {
 
   if (element.type === TOOL_ITEMS.BRUSH) {
     moved.points = element.points.map((p) => ({ x: p.x + dx, y: p.y + dy }));
-    moved.path = new Path2D(getSvgPathFromStroke(getStroke(moved.points)));
+    moved.path = new Path2D(
+      getSvgPathFromStroke(
+        getStroke(moved.points, {
+          size: element.size ? Number(element.size) : 4,
+          thinning: 0.6,
+          smoothing: 0.5,
+          streamline: 0.5,
+        })
+      )
+    );
     return moved;
   }
 
   moved.x2 = element.x2 + dx;
   moved.y2 = element.y2 + dy;
 
-  // Rebuild the roughEle
   const options = {
     seed: element.id + 1,
     fillStyle: "solid",
@@ -79,16 +113,38 @@ export const moveElement = (element, dx, dy) => {
       moved.roughEle = gen.line(moved.x1, moved.y1, moved.x2, moved.y2, options);
       break;
     case TOOL_ITEMS.RECTANGLE:
-      moved.roughEle = gen.rectangle(moved.x1, moved.y1, moved.x2 - moved.x1, moved.y2 - moved.y1, options);
+      moved.roughEle = gen.rectangle(
+        moved.x1, moved.y1,
+        moved.x2 - moved.x1,
+        moved.y2 - moved.y1,
+        options
+      );
       break;
     case TOOL_ITEMS.CIRCLE: {
-      const cx = (moved.x1 + moved.x2) / 2, cy = (moved.y1 + moved.y2) / 2;
-      moved.roughEle = gen.ellipse(cx, cy, moved.x2 - moved.x1, moved.y2 - moved.y1, options);
+      const cx = (moved.x1 + moved.x2) / 2,
+        cy = (moved.y1 + moved.y2) / 2;
+      moved.roughEle = gen.ellipse(
+        cx, cy,
+        moved.x2 - moved.x1,
+        moved.y2 - moved.y1,
+        options
+      );
       break;
     }
     case TOOL_ITEMS.ARROW: {
-      const { x3, y3, x4, y4 } = getArrowHeadsCoordinates(moved.x1, moved.y1, moved.x2, moved.y2, ARROW_LENGTH);
-      moved.roughEle = gen.linearPath([[moved.x1, moved.y1], [moved.x2, moved.y2], [x3, y3], [moved.x2, moved.y2], [x4, y4]], options);
+      const { x3, y3, x4, y4 } = getArrowHeadsCoordinates(
+        moved.x1, moved.y1, moved.x2, moved.y2, ARROW_LENGTH
+      );
+      moved.roughEle = gen.linearPath(
+        [
+          [moved.x1, moved.y1],
+          [moved.x2, moved.y2],
+          [x3, y3],
+          [moved.x2, moved.y2],
+          [x4, y4],
+        ],
+        options
+      );
       break;
     }
     default:
@@ -119,7 +175,11 @@ export const isPointNearElement = (element, pointX, pointY) => {
       context.font = `${element.size}px Caveat`;
       const textWidth = context.measureText(element.text).width;
       const textHeight = parseInt(element.size);
-      return isPointInBounds({ x: x1, y: y1, width: textWidth, height: textHeight }, pointX, pointY);
+      return isPointInBounds(
+        { x: x1, y: y1, width: textWidth, height: textHeight },
+        pointX,
+        pointY
+      );
     }
     default:
       return false;
@@ -127,7 +187,6 @@ export const isPointNearElement = (element, pointX, pointY) => {
 };
 
 export const getElementAtPosition = (elements, x, y) => {
-  // Iterate in reverse so topmost element is selected first
   for (let i = elements.length - 1; i >= 0; i--) {
     const el = elements[i];
     const bounds = getElementBounds(el);

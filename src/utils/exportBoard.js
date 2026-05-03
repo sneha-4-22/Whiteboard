@@ -1,33 +1,53 @@
-/**
- * exportBoard.js
- * Exports the whiteboard canvas as PNG or PDF.
- * PDF uses jsPDF — install with: npm install jspdf
- */
+import html2canvas from "html2canvas";
 
-/**
- * Export canvas as PNG download.
- * @param {string} canvasId - id of the <canvas> element
- */
-export function exportAsPng(canvasId = "canvas") {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
+async function captureFullBoard() {
+  const uiSelectors = [
+    "[class*='container']",
+    "[class*='zoomControls']",
+    "[class*='toolHint']",
+    "[class*='root']",
+    "[class*='layerControls']",
+  ];
+
+  const hidden = [];
+
+  uiSelectors.forEach((sel) => {
+    document.querySelectorAll(sel).forEach((el) => {
+      if (el.id !== "canvas") {
+        hidden.push({ el, prev: el.style.visibility });
+        el.style.visibility = "hidden";
+      }
+    });
+  });
+
+  const snapshot = await html2canvas(document.body, {
+    backgroundColor: "#ffffff",
+    scale: 2,
+    useCORS: true,
+    logging: false,
+  });
+
+  hidden.forEach(({ el, prev }) => {
+    el.style.visibility = prev;
+  });
+
+  return snapshot.toDataURL("image/png");
+}
+
+export async function exportAsPng() {
+  const dataUrl = await captureFullBoard();
+
   const link = document.createElement("a");
-  link.href = canvas.toDataURL("image/png");
+  link.href = dataUrl;
   link.download = `sketchboard-${Date.now()}.png`;
   link.click();
 }
 
-/**
- * Export canvas as PDF download.
- * Dynamically imports jsPDF so the rest of the app doesn't need it at startup.
- * @param {string} canvasId - id of the <canvas> element
- */
-export async function exportAsPdf(canvasId = "canvas") {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
+export async function exportAsPdf() {
+  const dataUrl = await captureFullBoard();
 
-  // Dynamic import — works with CRA, Vite, Next
   let jsPDF;
+
   try {
     const mod = await import("jspdf");
     jsPDF = mod.jsPDF ?? mod.default;
@@ -36,14 +56,24 @@ export async function exportAsPdf(canvasId = "canvas") {
     return;
   }
 
-  const imgData   = canvas.toDataURL("image/png");
-  const cw        = canvas.width;
-  const ch        = canvas.height;
+  const img = new Image();
+  img.src = dataUrl;
 
-  // Landscape or portrait based on canvas aspect
+  await new Promise((res) => {
+    img.onload = res;
+  });
+
+  const cw = img.width;
+  const ch = img.height;
+
   const orientation = cw >= ch ? "landscape" : "portrait";
-  const pdf = new jsPDF({ orientation, unit: "px", format: [cw, ch] });
 
-  pdf.addImage(imgData, "PNG", 0, 0, cw, ch);
+  const pdf = new jsPDF({
+    orientation,
+    unit: "px",
+    format: [cw, ch],
+  });
+
+  pdf.addImage(dataUrl, "PNG", 0, 0, cw, ch);
   pdf.save(`sketchboard-${Date.now()}.pdf`);
 }

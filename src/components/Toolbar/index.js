@@ -92,14 +92,14 @@ const Toolbar = () => {
             <div className={classes.exportDropdown} onMouseLeave={() => setExportOpen(false)}>
               <button
                 className={classes.exportOption}
-                onClick={() => { exportAsPng("canvas"); setExportOpen(false); }}
+                onClick={() => { exportAsPng(); setExportOpen(false); }}
               >
                 <FaImage className={classes.exportOptionIcon} />
                 <span>Download PNG</span>
               </button>
               <button
                 className={classes.exportOption}
-                onClick={() => { exportAsPdf("canvas"); setExportOpen(false); }}
+                onClick={() => { exportAsPdf(); setExportOpen(false); }}
               >
                 <FaFilePdf className={classes.exportOptionIcon} />
                 <span>Download PDF</span>

@@ -22,6 +22,11 @@ const boardContext = createContext({
   undo: () => {},
   redo: () => {},
   toCanvasCoords: () => {},
+  deleteElement: () => {},
+  bringToFront: () => {},
+  sendToBack: () => {},
+  bringForward: () => {},
+  sendBackward: () => {},
 });
 
 export default boardContext;
