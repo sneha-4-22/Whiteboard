@@ -1,28 +1,40 @@
 # 🎨 Sketchboard – Collaborative Whiteboard App
  
-A collaborative whiteboard built with React. Lets multiple users draw, add shapes, write text, and organize ideas on a shared canvas (MOCK RN 🫣)
-
-## Demo
-
-## ✨ Key Features
-
-- **Drawing tools** — freehand brush, line, rectangle, circle, arrow, and text
-- **Select & move** — click any element to select, drag to reposition
-- **Sticky notes** — add, edit, move, and color-code sticky notes on the canvas
-- **Eraser** — erase elements by painting over them
-- **Undo / Redo** — full history with Ctrl+Z / Ctrl+Y
-- **Zoom & Pan** — scroll wheel to zoom, middle-click or Alt+drag to pan
-- **Export** — download the board as PNG or PDF
-- **Mock collaboration** — simulated user cursors, participant avatars, and a live activity feed
-- **Keyboard shortcuts** — `V` select, `B` brush, `L` line, `R` rect, `C` circle, `A` arrow, `T` text, `E` eraser, `S` sticky
-
-## 🛠️ Tech Stack
-
-- React (hooks + context + useReducer for state)
-- HTML5 Canvas + [Rough.js](https://roughjs.com/) for sketchy shapes
-- [perfect-freehand](https://github.com/steveruizok/perfect-freehand) for brush strokes
-- html2canvas + jsPDF for export
-- CSS Modules + Tailwind utility classes
-
-
-
+> A collaborative whiteboard built with React. Draw, brainstorm, and organize ideas together on a shared canvas *(mock collab for now 🫣)*
+ 
+---
+ 
+### 🔗 Live Preview
+🌐 **[https://whiteboard-taupe-six.vercel.app/](https://whiteboard-taupe-six.vercel.app/)**
+ 
+---
+ 
+## 🖼️ Demo
+ 
+> *(drop a gif here)*
+ 
+---
+ 
+## ✏️ What can you do?
+ 
+```
+🖌️  Draw freely         →  brush, line, rect, circle, arrow, text
+🗒️  Sticky notes        →  add, drag, edit, recolor
+🧹  Eraser              →  wipe out anything
+↩️  Undo / Redo         →  Ctrl+Z / Ctrl+Y  (classic)
+🔍  Zoom & Pan          →  scroll to zoom, alt+drag to pan
+📤  Export              →  PNG or PDF, one click
+👥  Fake collab 🫣      →  mock cursors, avatars, live activity feed
+⌨️  Shortcuts           →  V B L R C A T E S  (you'll figure it out)
+```
+ 
+---
+ 
+## 🛠️ Built with
+ 
+- **React** — hooks + context + useReducer
+- **HTML5 Canvas** + [Rough.js](https://roughjs.com/) — for that sketchy hand-drawn look
+- [perfect-freehand](https://github.com/steveruizok/perfect-freehand) — smooth brush strokes
+- **html2canvas** + **jsPDF** — export magic
+- **CSS Modules** + Tailwind
+---
