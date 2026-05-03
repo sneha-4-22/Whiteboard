@@ -25,6 +25,8 @@ https://github.com/user-attachments/assets/31e564b2-cdc2-4719-ac14-04b56da2e08b
 🖌️  Draw freely         →  brush, line, rect, circle, arrow, text
 🗒️  Sticky notes        →  add, drag, edit, recolor
 🧹  Eraser              →  wipe out anything
+🧩  Layering            →  bring to front / send to back / reorder elements  
+📏  Resize objects       →  drag 8 handles (nw, ne, se, sw + sides) to resize
 ↩️  Undo / Redo         →  Ctrl+Z / Ctrl+Y  (classic)
 🔍  Zoom & Pan          →  scroll to zoom, alt+drag to pan
 📤  Export              →  PNG or PDF, one click
