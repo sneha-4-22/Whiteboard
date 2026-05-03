@@ -30,8 +30,8 @@ https://github.com/user-attachments/assets/31e564b2-cdc2-4719-ac14-04b56da2e08b
 ↩️  Undo / Redo         →  Ctrl+Z / Ctrl+Y  (classic)
 🔍  Zoom & Pan          →  scroll to zoom, alt+drag to pan
 📤  Export              →  PNG or PDF, one click
-👥  Fake collab 🫣      →  mock cursors, avatars, live activity feed
-⌨️  Shortcuts           →  V B L R C A T E S  (you'll figure it out)
+👥  Fake collab       →  mock cursors, avatars, live activity feed
+⌨️  Shortcuts           →  `V` select, `B` brush, `L` line, `R` rect, `C` circle, `A` arrow, `T` text, `E` eraser, `S` sticky
 ```
  
 ---
