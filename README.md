@@ -8,8 +8,6 @@
 🌐 **[https://whiteboard-taupe-six.vercel.app/](https://whiteboard-taupe-six.vercel.app/)**
 
 
- <img width="3056" height="1396" alt="sketchboard-1777802684487" src="https://github.com/user-attachments/assets/eb761372-e513-4faa-b995-193851a7a7e4" />
-
 ---
  
 ## 🖼️ Demo
