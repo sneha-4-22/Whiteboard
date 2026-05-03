@@ -10,8 +10,11 @@
 ---
  
 ## 🖼️ Demo
- 
-> *(drop a gif here)*
+
+
+https://github.com/user-attachments/assets/31e564b2-cdc2-4719-ac14-04b56da2e08b
+
+
  
 ---
  
